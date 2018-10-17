@@ -112,11 +112,11 @@ get(DB={db, _Database}, Key, DefaultValue) ->
   transact(DB, fun(Tx) -> get(Tx, Key, DefaultValue) end);
 get({tx, Tx}, Key, DefaultValue) ->
   maybe_do([
-  fun()-> fdb_nif:fdb_transaction_get(Tx, tuple:pack(Key)) end,
+  fun()-> fdb_nif:fdb_transaction_get(Tx, Key) end,
   fun(GetF) -> future_get(GetF, value) end,
   fun(Result) -> case Result of
       not_found -> DefaultValue;
-      _ -> binary_to_term(Result)
+      _ -> Result
    end
   end]).
 
@@ -155,15 +155,15 @@ next(Iterator = #iterator{tx = Transaction, iteration = Iteration, select = Sele
     end]).
 
 unpack_array_row({X,Y}) -> 
-  {tuple:unpack(X), binary_to_term(Y)}.
+  {X, Y}.
 
 fst_gt(nil, nil) -> {<<0>>, true, 0};
-fst_gt(nil, Value) -> { tuple:pack(Value), true, 0  };
-fst_gt(Value, nil) -> { tuple:pack(Value), true, 1 }.
+fst_gt(nil, Value) -> { Value, true, 0  };
+fst_gt(Value, nil) -> { Value, true, 1 }.
 
 lst_lt(nil, nil) -> {<<255>>, false, 1};
-lst_lt(nil, Value) -> { tuple:pack(Value), true, 1 };
-lst_lt(Value, nil) -> { tuple:pack(Value), false, 1 }.
+lst_lt(nil, Value) -> { Value, true, 1 };
+lst_lt(Value, nil) -> { Value, false, 1 }.
 
 %% @doc sets a key and value
 %% Existing values will be overwritten
@@ -172,7 +172,7 @@ lst_lt(Value, nil) -> { tuple:pack(Value), false, 1 }.
 set({db, Database}, Key, Value) ->
   transact({db, Database}, fun (Tx)-> set(Tx, Key, Value) end);
 set({tx, Tx}, Key, Value) ->
-  ErrCode = fdb_nif:fdb_transaction_set(Tx, tuple:pack(Key), term_to_binary(Value)),
+  ErrCode = fdb_nif:fdb_transaction_set(Tx, Key, Value),
   handle_fdb_result(ErrCode).
 
 %% @doc Clears a key and it's value
@@ -181,7 +181,7 @@ set({tx, Tx}, Key, Value) ->
 clear({db, Database}, Key) ->
   transact({db, Database}, fun (Tx)-> clear(Tx, Key) end);
 clear({tx, Tx}, Key) ->
-  ErrCode = fdb_nif:fdb_transaction_clear(Tx, tuple:pack(Key)),
+  ErrCode = fdb_nif:fdb_transaction_clear(Tx, Key),
   handle_fdb_result(ErrCode).
 
 %% @doc Clears all keys where `begin <= X < end`
@@ -190,7 +190,7 @@ clear({tx, Tx}, Key) ->
 clear_range({db, Database}, Begin, End) ->
   transact({db, Database}, fun (Tx)-> clear_range(Tx, Begin, End) end);
 clear_range({tx, Tx}, Begin, End) ->
-  ErrCode = fdb_nif:fdb_transaction_clear_range(Tx, tuple:pack(Begin), tuple:pack(End)),
+  ErrCode = fdb_nif:fdb_transaction_clear_range(Tx, Begin, End),
   handle_fdb_result(ErrCode).
 
 -spec transact(fdb_database(), fun((fdb_transaction())->term())) -> term().
