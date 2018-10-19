@@ -166,7 +166,7 @@ begin_keysel_params(#keysel{key_name=KeyName, or_equal=OrEqual, offset=Offset}) 
 begin_keysel_params(Key) -> begin_keysel_params(#keysel{key_name=Key, or_equal=false, offset=1}). % default inclusive
 
 end_keysel_params(#keysel{key_name=KeyName, or_equal=OrEqual, offset=Offset}) -> {KeyName,OrEqual,Offset};
-end_keysel_params(Key) -> end_keysel_params(#keysel{key_name=Key, or_equal=true, offset=0}). % default exclusive
+end_keysel_params(Key) -> end_keysel_params(#keysel{key_name=Key, or_equal=false, offset=1}). % default exclusive
 
 %% @doc sets a key and value
 %% Existing values will be overwritten
