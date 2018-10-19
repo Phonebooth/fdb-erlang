@@ -100,10 +100,15 @@ get(FdbHandle, Key) ->
 
 %% @doc Gets a range of key-value tuples where `begin <= X < end`
 -spec get_range(fdb_handle(), fdb_key(),fdb_key()) -> ([term()]|{error,nif_not_loaded}).
+%% For inclusive range [Begin, End], use this selector format.
+%%
+%% fdb:get_range(Db, Begin, fdb_keysel:first_greater_than(End)).
+%%
+%% In English, this expression means: Give me all the keys that start with Begin and exclude
+%% everything that is greater than End.
 %% @end
 get_range(Handle, Begin, End) ->
-  get(Handle, #select{gte = Begin, lt = End}).
-
+  get(Handle, #select{'begin' = Begin, 'end' = End}).
 
 %% @doc Gets a value using a key, falls back to a default value if not found
 -spec get(fdb_handle(), fdb_key(), term()) -> term().
@@ -132,12 +137,12 @@ bind({tx, Transaction}, Select = #select{}) ->
 -spec next(#iterator{}) -> (#iterator{}).
 %% @end
 next(Iterator = #iterator{tx = Transaction, iteration = Iteration, select = Select}) ->
-  {FstKey, FstIsEq, FstOfs} = fst_gt(Select#select.gt, Select#select.gte),
-  {LstKey, LstIsEq, LstOfs} = lst_lt(Select#select.lt, Select#select.lte),
+  {BeginKey, BeginIsEq, BeginOfs} = begin_keysel_params(Select#select.'begin'),
+  {EndKey, EndIsEq, EndOfs} = end_keysel_params(Select#select.'end'),
   maybe_do([
    fun() -> fdb_nif:fdb_transaction_get_range(Transaction, 
-      FstKey, FstIsEq, Select#select.offset_begin + FstOfs,
-      <<LstKey/binary>>, LstIsEq, Select#select.offset_end + LstOfs,
+      BeginKey, BeginIsEq, BeginOfs,
+      EndKey, EndIsEq, EndOfs,
       Select#select.limit, 
       Select#select.target_bytes, 
       Select#select.streaming_mode, 
@@ -157,13 +162,11 @@ next(Iterator = #iterator{tx = Transaction, iteration = Iteration, select = Sele
 unpack_array_row({X,Y}) -> 
   {X, Y}.
 
-fst_gt(nil, nil) -> {<<0>>, true, 0};
-fst_gt(nil, Value) -> { Value, true, 0  };
-fst_gt(Value, nil) -> { Value, true, 1 }.
+begin_keysel_params(#keysel{key_name=KeyName, or_equal=OrEqual, offset=Offset}) -> {KeyName,OrEqual,Offset};
+begin_keysel_params(Key) -> begin_keysel_params(#keysel{key_name=Key, or_equal=false, offset=1}). % default inclusive
 
-lst_lt(nil, nil) -> {<<255>>, false, 1};
-lst_lt(nil, Value) -> { Value, true, 1 };
-lst_lt(Value, nil) -> { Value, false, 1 }.
+end_keysel_params(#keysel{key_name=KeyName, or_equal=OrEqual, offset=Offset}) -> {KeyName,OrEqual,Offset};
+end_keysel_params(Key) -> end_keysel_params(#keysel{key_name=Key, or_equal=true, offset=0}). % default exclusive
 
 %% @doc sets a key and value
 %% Existing values will be overwritten

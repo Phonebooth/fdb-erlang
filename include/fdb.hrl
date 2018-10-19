@@ -1,10 +1,19 @@
+%#define FDB_KEYSEL_LAST_LESS_THAN(k, l) k, l, 0, 0
+%#define FDB_KEYSEL_LAST_LESS_OR_EQUAL(k, l) k, l, 1, 0
+%#define FDB_KEYSEL_FIRST_GREATER_THAN(k, l) k, l, 1, 1
+%#define FDB_KEYSEL_FIRST_GREATER_OR_EQUAL(k, l) k, l, 0, 1
+%key_name, key_name_length, x_or_equal, offset
+%We can ignore the length param
+
+-record(keysel, {key_name, or_equal, offset}).
+-define(FDB_KEYSEL_LAST_LESS_THAN(K), #keysel{key_name = K, or_equal = false, offset = 0}).
+-define(FDB_KEYSEL_LAST_LESS_OR_EQUAL(K), #keysel{key_name = K, or_equal = true, offset = 0}).
+-define(FDB_KEYSEL_FIRST_GREATER_THAN(K), #keysel{key_name = K, or_equal = true, offset = 1}).
+-define(FDB_KEYSEL_FIRST_GREATER_OR_EQUAL(K), #keysel{key_name = K, or_equal = false, offset = 1}).
+
 -record(select, {
-   lt = nil, 
-   lte = nil, 
-   offset_begin = 0, 
-   gte = nil, 
-   gt = nil, 
-   offset_end = 0,
+   'begin' = nil,
+   'end' = nil,
    limit = 0,
    target_bytes = 0,
    streaming_mode = iterator,
