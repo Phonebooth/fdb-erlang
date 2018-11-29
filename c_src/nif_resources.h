@@ -1,7 +1,7 @@
 #ifndef __NIF_RESOURCES__
 #define __NIF_RESOURCES__
 
-#define FDB_API_VERSION 510
+#define FDB_API_VERSION 600
 
 #include <pthread.h>
 #include "fdb_c.h"

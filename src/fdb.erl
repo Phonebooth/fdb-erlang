@@ -9,8 +9,6 @@
 
 -behaviour(gen_fdb).
 
--define (FDB_API_VERSION, 21).
-
 -define (FUTURE_TIMEOUT, 5000).
 -include("../include/fdb.hrl").
 

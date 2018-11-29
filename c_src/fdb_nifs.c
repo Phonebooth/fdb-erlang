@@ -48,7 +48,6 @@ static ERL_NIF_TERM atom_causal_write_risky;
 static ERL_NIF_TERM atom_causal_read_risky;
 static ERL_NIF_TERM atom_causal_read_disable;
 static ERL_NIF_TERM atom_next_write_no_write_conflict_range;
-static ERL_NIF_TERM atom_check_writes_enable;
 static ERL_NIF_TERM atom_read_your_writes_disable;
 static ERL_NIF_TERM atom_read_ahead_disable;
 static ERL_NIF_TERM atom_durability_datacenter;
@@ -58,7 +57,6 @@ static ERL_NIF_TERM atom_priority_system_immediate;
 static ERL_NIF_TERM atom_priority_batch;
 static ERL_NIF_TERM atom_initialize_new_database;
 static ERL_NIF_TERM atom_access_system_keys;
-static ERL_NIF_TERM atom_debug_dump;
 static ERL_NIF_TERM atom_timeout;
 static ERL_NIF_TERM atom_retry_limit;
 
@@ -162,7 +160,6 @@ static int get_FDBTransactionOption(ErlNifEnv* env, ERL_NIF_TERM atom, FDBTransa
     CMP_ATOM(atom_causal_read_risky,FDB_TR_OPTION_CAUSAL_READ_RISKY); 
     CMP_ATOM(atom_causal_read_disable,FDB_TR_OPTION_CAUSAL_READ_DISABLE); 
     CMP_ATOM(atom_next_write_no_write_conflict_range,FDB_TR_OPTION_NEXT_WRITE_NO_WRITE_CONFLICT_RANGE);
-    CMP_ATOM(atom_check_writes_enable,FDB_TR_OPTION_CHECK_WRITES_ENABLE); 
     CMP_ATOM(atom_read_your_writes_disable,FDB_TR_OPTION_READ_YOUR_WRITES_DISABLE); 
     CMP_ATOM(atom_read_ahead_disable,FDB_TR_OPTION_READ_AHEAD_DISABLE); 
     CMP_ATOM(atom_durability_datacenter,FDB_TR_OPTION_DURABILITY_DATACENTER); 
@@ -172,7 +169,6 @@ static int get_FDBTransactionOption(ErlNifEnv* env, ERL_NIF_TERM atom, FDBTransa
     CMP_ATOM(atom_priority_batch,FDB_TR_OPTION_PRIORITY_BATCH); 
     CMP_ATOM(atom_initialize_new_database,FDB_TR_OPTION_INITIALIZE_NEW_DATABASE); 
     CMP_ATOM(atom_access_system_keys,FDB_TR_OPTION_ACCESS_SYSTEM_KEYS); 
-    CMP_ATOM(atom_debug_dump,FDB_TR_OPTION_DEBUG_DUMP); 
     CMP_ATOM(atom_timeout,FDB_TR_OPTION_TIMEOUT); 
     CMP_ATOM(atom_retry_limit,FDB_TR_OPTION_RETRY_LIMIT); 
     return 0;
@@ -241,7 +237,6 @@ static int nif_on_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info)
     atom_causal_read_risky = enif_make_atom(env, "causal_read_risky");
     atom_causal_read_disable = enif_make_atom(env, "causal_read_disable");
     atom_next_write_no_write_conflict_range = enif_make_atom(env, "next_write_no_write_conflict_range");
-    atom_check_writes_enable = enif_make_atom(env, "check_writes_enable");
     atom_read_your_writes_disable = enif_make_atom(env, "read_your_writes_disable");
     atom_read_ahead_disable = enif_make_atom(env, "read_ahead_disable");
     atom_durability_datacenter = enif_make_atom(env, "durability_datacenter");
@@ -251,7 +246,6 @@ static int nif_on_load(ErlNifEnv *env, void **priv_data, ERL_NIF_TERM load_info)
     atom_priority_batch = enif_make_atom(env, "priority_batch");
     atom_initialize_new_database = enif_make_atom(env, "initialize_new_database");
     atom_access_system_keys = enif_make_atom(env, "access_system_keys");
-    atom_debug_dump = enif_make_atom(env, "debug_dump");
     atom_timeout = enif_make_atom(env, "timeout");
     atom_retry_limit = enif_make_atom(env, "retry_limit");
 
