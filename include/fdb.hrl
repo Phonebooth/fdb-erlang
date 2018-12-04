@@ -26,7 +26,7 @@
    iteration,
    data = [],
    select,
-   out_more = true}).
+   more = false}).
 
 -type fdb_version() :: pos_integer().
 -type fdb_errorcode() :: pos_integer().

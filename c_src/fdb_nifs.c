@@ -481,7 +481,7 @@ static ERL_NIF_TERM nif_fdb_future_get_keyvalue_array(ErlNifEnv* env, int argc, 
         return mk_result(env,err,atom_undefined);
     }
 
-    ERL_NIF_TERM result = enif_make_list(env, 0);
+    ERL_NIF_TERM data_result = enif_make_list(env, 0);
 
     while (out_count>0)
     {
@@ -490,8 +490,13 @@ static ERL_NIF_TERM nif_fdb_future_get_keyvalue_array(ErlNifEnv* env, int argc, 
       ERL_NIF_TERM k = make_binary(env, kv->key, kv->key_length);
       ERL_NIF_TERM v = make_binary(env, kv->value, kv->value_length);
       ERL_NIF_TERM elem = enif_make_tuple2(env, k, v);
-      result = enif_make_list_cell(env, elem, result);
+      data_result = enif_make_list_cell(env, elem, data_result);
     }
+
+    ERL_NIF_TERM result = 0;
+    enif_make_map_put(env, enif_make_new_map(env), enif_make_atom(env, "data"), data_result, &result);
+    enif_make_map_put(env, result, enif_make_atom(env, "more"), out_more ? atom_true : atom_false, &result);
+
     return mk_result(env,err,result);
 }
 

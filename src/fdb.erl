@@ -91,10 +91,26 @@ get(DB={db, _}, Select = #select{}) ->
   transact(DB, fun(Tx) -> get(Tx, Select) end);
 get(Tx={tx, _}, Select = #select{}) ->
   Iterator = bind(Tx, Select),
-  Next = next(Iterator),
-  Next#iterator.data;
+  exhaust_iterator(Iterator, []);
 get(FdbHandle, Key) -> 
   get(FdbHandle, Key, not_found).
+
+exhaust_iterator(Iterator, Acc) ->
+    case next(Iterator) of
+        Next=#iterator{} ->
+            Next = next(Iterator),
+            Acc2 = [Next#iterator.data|Acc],
+            case Next#iterator.more of
+                true ->
+                    exhaust_iterator(Next, Acc2);
+                false ->
+                    % the result is a list of proplists, so this is
+                    % safe and the most memory efficient option
+                    lists:flatten(lists:reverse(Acc2))
+            end;
+        Error ->
+            Error
+    end.
 
 %% @doc Gets a range of key-value tuples where `begin <= X < end`
 -spec get_range(fdb_handle(), fdb_key(),fdb_key()) -> ([term()]|{error,nif_not_loaded}).
@@ -137,6 +153,7 @@ bind({tx, Transaction}, Select = #select{}) ->
 next(Iterator = #iterator{tx = Transaction, iteration = Iteration, select = Select}) ->
   {BeginKey, BeginIsEq, BeginOfs} = begin_keysel_params(Select#select.'begin'),
   {EndKey, EndIsEq, EndOfs} = end_keysel_params(Select#select.'end'),
+  %io:format("~p~n", [Iterator]),
   maybe_do([
    fun() -> fdb_nif:fdb_transaction_get_range(Transaction, 
       BeginKey, BeginIsEq, BeginOfs,
@@ -150,12 +167,29 @@ next(Iterator = #iterator{tx = Transaction, iteration = Iteration, select = Sele
    fun(F) -> {fdb_nif:fdb_future_is_ready(F),F} end,
    fun(Ready) -> wait_non_blocking(Ready) end, 
    fun(F) -> future_get(F, keyvalue_array) end,
-   fun(EncodedData) -> 
-     Iterator#iterator{ 
-        data = lists:map(fun unpack_array_row/1, EncodedData),
-        iteration = Iteration + 1, 
-        out_more = false}
-    end]).
+   fun(#{data := EncodedData,
+         more := More}) -> 
+     %io:format("keyvalue ~p~n", [Map]),
+     ReturnData = lists:map(fun unpack_array_row/1, EncodedData),
+     NextIteration = Iteration+1,
+     case EncodedData of
+         [] ->
+             Iterator#iterator{
+               data = ReturnData,
+               iteration = NextIteration,
+               more = false};
+        _ ->
+            %% the C# client does this in addition to advancing the iterator:
+            %% beginSelector = KeySelector.FirstGreaterThan(data.Last);
+            %% This isn't documented anywhere in fdb :(
+            {LastKey, _} = lists:last(EncodedData),
+            NewSelect = Select#select{'begin' = ?FDB_KEYSEL_FIRST_GREATER_THAN(LastKey)},
+            Iterator#iterator{
+              select = NewSelect,
+              data = ReturnData,
+              iteration = NextIteration,
+              more = More}
+     end end]).
 
 unpack_array_row({X,Y}) -> 
   {X, Y}.
@@ -211,11 +245,10 @@ attempt_transaction(DbHandle, DoStuff) ->
   ]).
 
 handle_transaction_attempt({ok, _Tx, Result, _ApplySelf}) -> Result;
-handle_transaction_attempt({{error, Err}, Tx, _Result, ApplySelf}) ->
+handle_transaction_attempt({{error, Err}, Tx, _Result, _ApplySelf}) ->
   OnErrorF = fdb_nif:fdb_transaction_on_error(Tx, Err),
   maybe_do([
-    fun () -> future(OnErrorF) end,
-    fun () -> ApplySelf() end
+    fun () -> future(OnErrorF) end
   ]).
 
 handle_fdb_result({0, RetVal}) -> {ok, RetVal};
