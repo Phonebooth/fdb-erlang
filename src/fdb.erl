@@ -1,7 +1,7 @@
 -module(fdb).
 -export([init/0, init/1]).
 -export([api_version/1, open/0]).
--export([get/2, get/3, get_range/3, set/3]).
+-export([get/2, get/3, get_range/3, set/3, fold/4]).
 -export([clear/2, clear_range/3]).
 -export([transact/2]).
 -export([init_and_open/0, init_and_open/1]).
@@ -90,23 +90,35 @@ init_and_open(SoFile) ->
 get(DB={db, _}, Select = #select{}) ->
   transact(DB, fun(Tx) -> get(Tx, Select) end);
 get(Tx={tx, _}, Select = #select{}) ->
-  Iterator = bind(Tx, Select),
-  exhaust_iterator(Iterator, []);
+  Fun = fun(Batch, {ok, Acc0}) ->
+                {ok, [Batch|Acc0]}
+        end,
+  case fold(Tx, Fun, {ok, []}, Select) of
+      {ok, AccFinal} ->
+          % the result is a list of proplists, so this is
+          % safe and the most memory efficient option
+          lists:flatten(lists:reverse(AccFinal));
+      Error ->
+          Error
+  end;
 get(FdbHandle, Key) -> 
   get(FdbHandle, Key, not_found).
 
-exhaust_iterator(Iterator, Acc) ->
+fold(DB={db, _Database}, Fun, Acc, Select=#select{}) ->
+    transact(DB, fun(Tx) -> fold(Tx, Fun, Acc, Select) end);
+fold(Tx={tx, _}, Fun, Acc, Select=#select{}) ->
+    Iterator = bind(Tx, Select),
+    fold_iterator(Fun, Acc, Iterator).
+
+fold_iterator(Fun, Acc, Iterator) ->
     case next(Iterator) of
         Next=#iterator{} ->
-            Next = next(Iterator),
-            Acc2 = [Next#iterator.data|Acc],
-            case Next#iterator.more of
+            Acc2 = Fun(Next#iterator.data, Acc),
+            if
+                Next#iterator.more ->
+                    fold_iterator(Fun, Acc2, Next);
                 true ->
-                    exhaust_iterator(Next, Acc2);
-                false ->
-                    % the result is a list of proplists, so this is
-                    % safe and the most memory efficient option
-                    lists:flatten(lists:reverse(Acc2))
+                    Acc2
             end;
         Error ->
             Error
@@ -123,6 +135,7 @@ exhaust_iterator(Iterator, Acc) ->
 %% @end
 get_range(Handle, Begin, End) ->
   get(Handle, #select{'begin' = Begin, 'end' = End}).
+
 
 %% @doc Gets a value using a key, falls back to a default value if not found
 -spec get(fdb_handle(), fdb_key(), term()) -> term().
